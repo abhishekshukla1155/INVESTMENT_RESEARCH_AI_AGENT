@@ -11,12 +11,24 @@ import {
   Layers,
   Activity,
   Award,
-  Link2
+  Link2,
+  CheckCircle2,
+  ShieldCheck
 } from 'lucide-react';
+import DebatePanel from './DebatePanel';
 
 /**
  * @file ResultCard.jsx
  * @description Premium investment analysis report card designed as an institutional terminal dashboard.
+ * 
+ * VISUAL HIERARCHY ORDER (SPECS):
+ * 1. Executive Summary / Overview
+ * 2. Investment Score (Circular chart)
+ * 3. AI Investment Debate (Primary feature below header/summary)
+ * 4. Financial Intelligence
+ * 5. Strengths
+ * 6. Risks
+ * 7. Verified Sources
  */
 export default function ResultCard({ result }) {
   if (!result) return null;
@@ -29,7 +41,8 @@ export default function ResultCard({ result }) {
     financialSummary,
     reasons = [],
     risks = [],
-    sources = []
+    sources = [],
+    debate
   } = result;
 
   const isInvest = decision === 'INVEST';
@@ -170,66 +183,69 @@ export default function ResultCard({ result }) {
         </div>
       </div>
 
-      {/* Main Panel grid */}
-      <div className="p-6 md:p-8 space-y-8 bg-slate-950/20">
+      {/* Main Panel body - structured according to new specs */}
+      <div className="p-6 md:p-8 space-y-10 bg-slate-950/20">
         
-        {/* Core Summaries section */}
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-          
-          {/* Company Overview Block */}
-          <div className="lg:col-span-7 bg-[#050914]/60 border border-white/5 rounded-2xl p-6 space-y-4 hover:border-white/10 transition-colors">
-            <h3 className="text-slate-200 font-bold text-sm flex items-center gap-2 uppercase tracking-wider font-mono">
-              <Layers className="w-4 h-4 text-[#00D09C]" />
-              Executive Analysis Summary
-            </h3>
-            <p className="text-slate-400 text-[14px] leading-relaxed">
-              {overview}
-            </p>
-          </div>
-
-          {/* Financial Intelligence dashboard */}
-          <div className="lg:col-span-5 bg-[#050914]/60 border border-white/5 rounded-2xl p-6 space-y-4 hover:border-white/10 transition-colors">
-            <h3 className="text-slate-200 font-bold text-sm flex items-center gap-2 uppercase tracking-wider font-mono">
-              <Activity className="w-4 h-4 text-[#00D09C]" />
-              Financial Intelligence
-            </h3>
-            
-            {hasQuantitativeData ? (
-              <div className="grid grid-cols-2 gap-3.5 pt-1">
-                <div className="bg-slate-950/40 border border-white/5 rounded-xl p-3">
-                  <span className="text-[9px] text-slate-500 block font-mono">MARKET CAP</span>
-                  <span className="text-sm font-bold text-slate-200">{marketCap}</span>
-                </div>
-                <div className="bg-slate-950/40 border border-white/5 rounded-xl p-3">
-                  <span className="text-[9px] text-slate-500 block font-mono">P/E RATIO</span>
-                  <span className="text-sm font-bold text-slate-200">{peRatio}</span>
-                </div>
-                <div className="bg-slate-950/40 border border-white/5 rounded-xl p-3">
-                  <span className="text-[9px] text-slate-500 block font-mono">REVENUE GROWTH</span>
-                  <span className="text-sm font-bold text-[#00D09C]">{growth}</span>
-                </div>
-                <div className="bg-slate-950/40 border border-white/5 rounded-xl p-3">
-                  <span className="text-[9px] text-slate-500 block font-mono">PROFIT MARGINS</span>
-                  <span className="text-sm font-bold text-slate-200">{margins}</span>
-                </div>
-                <div className="col-span-2 bg-slate-950/40 border border-white/5 rounded-xl p-3 flex justify-between items-center">
-                  <span className="text-[9px] text-slate-500 font-mono">DEBT-TO-EQUITY</span>
-                  <span className="text-xs font-bold text-slate-300">{debtLevel}</span>
-                </div>
-              </div>
-            ) : (
-              <div className="space-y-2 text-center py-6 text-slate-500">
-                <Info className="w-6 h-6 mx-auto opacity-40 text-slate-400" />
-                <p className="text-xs">No formal public ticker resolved. Displaying search metadata summary:</p>
-                <p className="text-[11px] font-mono text-slate-400 text-left bg-slate-950/40 p-2.5 rounded-lg border border-white/5 leading-normal max-h-[140px] overflow-y-auto">
-                  {financialSummary}
-                </p>
-              </div>
-            )}
-          </div>
+        {/* HIERARCHY 1: Executive Summary Overview */}
+        <div className="bg-[#050914]/60 border border-white/5 rounded-2xl p-6 md:p-8 space-y-4 hover:border-white/10 transition-colors">
+          <h3 className="text-slate-200 font-bold text-sm flex items-center gap-2 uppercase tracking-wider font-mono border-b border-white/5 pb-3">
+            <Layers className="w-4.5 h-4.5 text-[#00D09C]" />
+            Executive Analysis Summary
+          </h3>
+          <p className="text-slate-300 text-sm md:text-base leading-relaxed">
+            {overview}
+          </p>
         </div>
 
-        {/* Strengths & Risks bullet matrix */}
+        {/* HIERARCHY 2: AI Investment Debate (Primary feature) */}
+        {debate && (
+          <div className="border-t border-white/5 pt-8">
+            <DebatePanel debate={debate} />
+          </div>
+        )}
+
+        {/* HIERARCHY 3: Financial Intelligence Dashboard */}
+        <div className="bg-[#050914]/60 border border-white/5 rounded-2xl p-6 md:p-8 space-y-5 hover:border-white/10 transition-colors">
+          <h3 className="text-slate-200 font-bold text-sm flex items-center gap-2 uppercase tracking-wider font-mono border-b border-white/5 pb-3">
+            <Activity className="w-4.5 h-4.5 text-[#00D09C]" />
+            Financial Intelligence Fundamental Dashboard
+          </h3>
+          
+          {hasQuantitativeData ? (
+            <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+              <div className="bg-slate-950/40 border border-white/5 rounded-xl p-4">
+                <span className="text-[9px] text-slate-500 block font-mono">MARKET CAP</span>
+                <span className="text-base font-bold text-slate-200">{marketCap}</span>
+              </div>
+              <div className="bg-slate-950/40 border border-white/5 rounded-xl p-4">
+                <span className="text-[9px] text-slate-500 block font-mono">P/E RATIO</span>
+                <span className="text-base font-bold text-slate-200">{peRatio}</span>
+              </div>
+              <div className="bg-slate-950/40 border border-white/5 rounded-xl p-4">
+                <span className="text-[9px] text-slate-500 block font-mono">REVENUE GROWTH</span>
+                <span className="text-base font-bold text-[#00D09C]">{growth}</span>
+              </div>
+              <div className="bg-slate-950/40 border border-white/5 rounded-xl p-4">
+                <span className="text-[9px] text-slate-500 block font-mono">PROFIT MARGINS</span>
+                <span className="text-base font-bold text-slate-200">{margins}</span>
+              </div>
+              <div className="col-span-2 md:col-span-1 bg-slate-950/40 border border-white/5 rounded-xl p-4 flex flex-col justify-between">
+                <span className="text-[9px] text-slate-500 block font-mono">DEBT-TO-EQUITY</span>
+                <span className="text-sm font-bold text-slate-200 mt-1">{debtLevel}</span>
+              </div>
+            </div>
+          ) : (
+            <div className="space-y-3 text-center py-6 text-slate-500 max-w-xl mx-auto">
+              <Info className="w-7 h-7 mx-auto opacity-40 text-slate-400" />
+              <p className="text-xs">No formal public ticker resolved. Qualitative search context detail:</p>
+              <p className="text-xs font-mono text-slate-400 text-left bg-slate-950/40 p-3 rounded-lg border border-white/5 leading-relaxed max-h-[160px] overflow-y-auto">
+                {financialSummary}
+              </p>
+            </div>
+          )}
+        </div>
+
+        {/* HIERARCHY 4: Strengths & Risks Columns */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           
           {/* Strengths column */}
@@ -274,14 +290,14 @@ export default function ResultCard({ result }) {
 
         </div>
 
-        {/* Research Sources Section */}
+        {/* HIERARCHY 5: Research Sources Section */}
         {sources && sources.length > 0 && (
-          <div className="border-t border-white/5 pt-6 space-y-3">
+          <div className="border-t border-white/5 pt-8 space-y-4">
             <h4 className="text-slate-400 font-semibold text-xs flex items-center gap-2 uppercase tracking-wider font-mono">
               <Link2 className="w-3.5 h-3.5 text-[#00D09C]" />
               Research Sources Verified
             </h4>
-            <div className="flex flex-wrap gap-2.5">
+            <div className="flex flex-wrap gap-3">
               {sources.map((url, index) => {
                 let domain = 'Website';
                 try {
@@ -299,16 +315,19 @@ export default function ResultCard({ result }) {
                     href={url}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="flex items-center gap-2 bg-[#050914]/80 border border-white/5 hover:border-[#00D09C]/30 hover:bg-[#00D09C]/5 px-3 py-2 rounded-xl text-xs text-slate-300 transition-all duration-200 cursor-pointer"
+                    className="flex items-center gap-2.5 bg-[#050914]/85 border border-[#00D09C]/10 hover:border-[#00D09C]/35 hover:bg-[#00D09C]/5 px-3.5 py-2.5 rounded-xl text-xs text-slate-300 hover:text-white transition-all duration-200 cursor-pointer shadow-sm"
                   >
                     <img 
                       src={faviconUrl} 
                       alt="" 
                       onError={(e) => { e.target.style.display = 'none'; }}
-                      className="w-3.5 h-3.5 rounded-sm object-contain"
+                      className="w-4 h-4 rounded-sm object-contain"
                     />
-                    <span className="font-mono">{domain}</span>
-                    <ExternalLink className="w-3 h-3 text-slate-500" />
+                    <span className="font-mono text-slate-300 font-medium">{domain}</span>
+                    <span className="text-[#00D09C] bg-[#00D09C]/5 border border-[#00D09C]/15 px-1.5 py-0.25 rounded text-[8px] font-mono tracking-wider flex items-center gap-0.5 leading-none">
+                      <ShieldCheck className="w-2.5 h-2.5 text-[#00D09C]" /> VERIFIED
+                    </span>
+                    <ExternalLink className="w-3 h-3 text-slate-500 shrink-0" />
                   </a>
                 );
               })}
