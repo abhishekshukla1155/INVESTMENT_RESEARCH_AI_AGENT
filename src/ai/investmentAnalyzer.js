@@ -22,10 +22,12 @@ import { calculateInvestmentScore } from '../utils/scoreCalculator.js';
  * @param {string} companyName - Target company name
  * @returns {Promise<Object>} Final structured report card
  */
-export async function analyzeInvestment(companyName) {
+export async function analyzeInvestment(companyName, preCollectedResearch = null) {
   console.log(`Research started: ${companyName}`);
-  // Step 1: Collect research context from web search and stock databases
-  const research = await collectResearch(companyName);
+  // Step 1: Use pre-collected research if provided (shared with debate agents to avoid
+  // duplicate Tavily and Yahoo Finance API calls). Falls back to collecting research
+  // independently if called without a second argument (backward-compatible).
+  const research = preCollectedResearch || await collectResearch(companyName);
 
   // Step 2: Log the gathered research data before invoking Gemini
   console.log("Research Data:", research);
