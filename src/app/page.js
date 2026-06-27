@@ -4,6 +4,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import SearchBox from '../components/SearchBox';
 import Loader from '../components/Loader';
 import ResultCard from '../components/ResultCard';
+import DebatePanel from '../components/DebatePanel';
 import { analyzeCompany } from '../api/apiHelper';
 import { 
   Database, 
@@ -209,8 +210,9 @@ export default function Home() {
           )}
 
           {!isLoading && result && (
-            <div className="animate-fade-in-up">
+            <div className="animate-fade-in-up space-y-6">
               <ResultCard result={result} />
+              {result.debate && <DebatePanel debate={result.debate} />}
             </div>
           )}
         </section>
