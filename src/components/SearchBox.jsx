@@ -34,7 +34,7 @@ export default function SearchBox({ onSearch, isLoading }) {
             type="text"
             value={query}
             onChange={(e) => setQuery(e.target.value)}
-            placeholder="Enter Company Name or Ticker (Apple, Tesla, MSFT...)"
+            placeholder="Enter company name or ticker (Tesla, Apple, Microsoft)"
             disabled={isLoading}
             className="w-full bg-transparent text-white placeholder-slate-500 border-0 rounded-xl pl-12 pr-4 py-3.5 text-base focus:outline-none focus:ring-0 disabled:opacity-50 transition-all duration-200"
           />
