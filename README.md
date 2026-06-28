@@ -3,7 +3,6 @@
 [![Next.js](https://img.shields.io/badge/Next.js-16-black?logo=next.js)](https://nextjs.org/)
 [![LangChain](https://img.shields.io/badge/LangChain-1.5-green)](https://langchain.com/)
 [![Gemini](https://img.shields.io/badge/Gemini-2.5--flash-blue?logo=google)](https://ai.google.dev/)
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
 ---
 
@@ -133,10 +132,6 @@ AUTH_GOOGLE_SECRET=your_google_client_secret
 ```bash
 npm run dev
 ```
-
-Open [http://localhost:3000](http://localhost:3000) in your browser.
-
-> **Note:** Email/password sign-in works without Google OAuth credentials configured. Google login requires `AUTH_GOOGLE_ID` and `AUTH_GOOGLE_SECRET`.
 
 ---
 
@@ -326,40 +321,6 @@ AI was used for:
 - **Documentation** — drafting inline JSDoc comments and architecture notes
 
 Complete conversation transcripts and interaction logs from the development process are included separately as part of the submission for evaluation purposes.
-
----
-
-## Screenshots
-
-> **Hero / Landing Page**
-> `[screenshot: landing-page.png]`
-
-> **Analysis Dashboard — Result Card**
-> `[screenshot: result-card.png]`
-
-> **Multi-Agent Debate Panel — Bull vs Bear**
-> `[screenshot: debate-panel.png]`
-
-> **Financial Intelligence Dashboard**
-> `[screenshot: financial-dashboard.png]`
-
-> **Authentication — Login Page**
-> `[screenshot: login-page.png]`
-
----
-
-## License
-
-This project is licensed under the [MIT License](LICENSE).
-
----
-
-## Author
-
-**Abhishek Shukla**
-
-- GitHub: [github.com/your-username](https://github.com/your-username)
-- LinkedIn: [linkedin.com/in/your-profile](https://linkedin.com/in/your-profile)
 
 ---
 
