@@ -2,100 +2,154 @@
  * @file route.js
  * @description Next.js App Router API Route Handler for `/api/analyze` (POST).
  *
- * DATA FLOW (UPDATED — Phase 2: Multi-Agent Debate Integration):
+ * UPDATED DATA FLOW (Company Resolution Fix):
  *
- * 1. Client POSTs `{ company: "company_name" }` to this endpoint.
- * 2. We validate the input (400 Bad Request if missing).
- * 3. We call collectResearch(company) EXACTLY ONCE and store the result as sharedResearch.
- *    → This is the critical change: research is no longer collected inside analyzeInvestment.
- *    → All 4 AI components (main analyzer + 3 debate agents) share this single context object.
- *    → This prevents duplicate Tavily and Yahoo Finance API calls.
- * 4. We run analyzeInvestment and runDebate IN PARALLEL using Promise.all().
- *    → These are independent — neither needs the other's result.
- *    → Parallel execution saves the execution time of the slower pipeline.
- * 5. We map the debate agent output fields to the user-facing API field names.
- * 6. We merge everything into one final JSON response and return it.
+ * 1.  Client POSTs { company: "raw user query" }
+ * 2.  Input validation (400 if missing/blank)
+ * 3.  resolveCompany(rawQuery)
+ *     → On success:     { success: true, companyName, ticker, exchange, confidence }
+ *     → On ambiguous:   { success: false, ambiguous: true, suggestions: [...] }
+ *                        → Return 422 with suggestions list
+ *     → On not-found:   { success: false, ambiguous: false, error: "..." }
+ *                        → Return 404 with error message
+ * 4.  collectResearch(resolvedEntity)   ← passes { companyName, ticker }
+ *     Tavily searches `companyName`  (verified)
+ *     Yahoo Finance uses `ticker`    (verified)
+ *     → No more company mismatch possible
+ * 5.  analyzeInvestment + runDebate run in parallel (shared research context)
+ * 6.  Merge + return final JSON (same shape as before — backward compatible)
  *
  * INTERVIEW TALKING POINT:
- * This route is the "orchestration layer" of the system. It is the only component
- * that knows about both the main analysis pipeline and the debate system. Keeping
- * orchestration here (rather than inside either sub-system) follows the principle
- * of Separation of Concerns — each module does one job, and this route coordinates them.
+ * The resolver pattern is analogous to "canonicalisation" in NLP pipelines —
+ * we convert a fuzzy user signal into an unambiguous canonical entity before
+ * any downstream processing begins.
  */
 
 import { NextResponse } from 'next/server';
+import { resolveCompany } from '../../../tools/companyResolver.js';
 import { collectResearch } from '../../../ai/researchAgent.js';
 import { analyzeInvestment } from '../../../ai/investmentAnalyzer.js';
 import { runDebate } from '../../../ai/debateOrchestrator.js';
 
 export async function POST(request) {
   try {
-    const { company } = await request.json();
-    console.log('API received company:', company);
+    const body = await request.json();
+    const rawCompany = body?.company;
 
-    // ─── Step 1: Validate input ────────────────────────────────────────────
-    if (!company || typeof company !== 'string' || !company.trim()) {
+    // ── Step 1: Input validation ───────────────────────────────────────────
+    if (!rawCompany || typeof rawCompany !== 'string' || !rawCompany.trim()) {
       return NextResponse.json(
-        { error: 'Company name is required and must be a valid text string.' },
+        { error: 'Company name is required and must be a non-empty string.' },
         { status: 400 }
       );
     }
 
-    // ─── Step 2: Collect research ONCE ────────────────────────────────────
-    // sharedResearch is passed to BOTH the main analyzer and all debate agents.
-    // This ensures Tavily and Yahoo Finance are each called exactly one time
-    // regardless of how many AI components consume the data.
-    console.log('API: Collecting shared research context...');
-    const sharedResearch = await collectResearch(company);
-    console.log('API: Shared research ready. Launching analysis and debate in parallel...');
+    const userQuery = rawCompany.trim();
+    console.log(`\n${'─'.repeat(60)}`);
+    console.log(`[API] New analysis request`);
+    console.log(`[API] Raw Query:           "${userQuery}"`);
 
-    // ─── Step 3: Run main analysis and debate IN PARALLEL ─────────────────
-    // analyzeInvestment receives sharedResearch → skips its internal collectResearch call.
-    // runDebate receives sharedResearch → passes it directly to all three agents.
-    // Promise.all() runs both pipelines concurrently, minimising total latency.
+    // ── Step 2: Company Resolution ────────────────────────────────────────
+    // This is the critical new step. We resolve the raw query to a single
+    // verified (companyName, ticker) pair before ANY research begins.
+    console.log(`[API] Running Company Resolver...`);
+    const resolution = await resolveCompany(userQuery);
+
+    if (!resolution.success) {
+      if (resolution.ambiguous) {
+        // The query matched multiple plausible companies — ask the user to clarify.
+        console.warn(`[API] Ambiguous query: "${userQuery}". Returning suggestions.`);
+        return NextResponse.json(
+          {
+            error: `"${userQuery}" is ambiguous. Did you mean one of the following?`,
+            ambiguous: true,
+            suggestions: resolution.suggestions,
+          },
+          { status: 422 }
+        );
+      } else {
+        // No matching company found at all.
+        console.warn(`[API] Company not found: "${userQuery}". Error: ${resolution.error}`);
+        return NextResponse.json(
+          { error: resolution.error || `Could not find a publicly listed company matching "${userQuery}".` },
+          { status: 404 }
+        );
+      }
+    }
+
+    // Log the resolved entity clearly for debugging
+    console.log(`[API] Resolved Company:    "${resolution.companyName}"`);
+    console.log(`[API] Ticker:              ${resolution.ticker || 'N/A'}`);
+    console.log(`[API] Exchange:            ${resolution.exchange || 'N/A'}`);
+    console.log(`[API] Resolution Confidence: ${(resolution.confidence * 100).toFixed(0)}%`);
+
+    // ── Step 3: Collect research ONCE using verified entity ───────────────
+    // Both Tavily and Yahoo Finance now receive the SAME verified company.
+    console.log(`[API] Collecting shared research context...`);
+    const sharedResearch = await collectResearch({
+      companyName: resolution.companyName,
+      ticker:      resolution.ticker,
+    });
+
+    // Log the research / finance source companies for validation
+    const finName = sharedResearch.financialData?.name || 'N/A';
+    console.log(`[API] Research Company:    "${sharedResearch.company}"`);
+    console.log(`[API] Finance Company:     "${finName}"`);
+
+    // Company validation check
+    const resFirst  = sharedResearch.company.toLowerCase().split(' ')[0];
+    const finFirst  = finName.toLowerCase().split(' ')[0];
+    const validated = resFirst === finFirst ||
+                      finName.toLowerCase().includes(resFirst) ||
+                      sharedResearch.company.toLowerCase().includes(finFirst);
+    console.log(`[API] Company Validation:  ${validated ? '✅ PASSED' : '⚠️  WARN (names differ)'}`);
+    console.log(`${'─'.repeat(60)}`);
+
+    console.log(`[API] Launching analysis and debate in parallel...`);
+
+    // ── Step 4: Run analysis and debate in parallel ───────────────────────
     const [analysisResult, debateResult] = await Promise.all([
-      analyzeInvestment(company, sharedResearch),
+      analyzeInvestment(resolution.companyName, sharedResearch),
       runDebate(sharedResearch),
     ]);
 
-    console.log('API: Analysis and debate both complete. Assembling final response...');
+    console.log(`[API] Analysis and debate complete. Assembling response...`);
 
-    // ─── Step 4: Map debate output to the required API field names ─────────
-    // The debate agents internally use field names like "points" and "cio".
-    // We remap them here to the clean, user-facing field names defined in the spec.
-    // This keeps the agent files focused on their own logic, not on API contracts.
+    // ── Step 5: Map debate output fields ─────────────────────────────────
     const debate = {
       bull: {
-        arguments: debateResult.bull.points || [],
+        arguments:  debateResult.bull.points    || [],
         confidence: debateResult.bull.confidence || 0,
-        summary: debateResult.bull.summary || '',
+        summary:    debateResult.bull.summary    || '',
       },
       bear: {
-        arguments: debateResult.bear.points || [],
+        arguments:  debateResult.bear.points    || [],
         confidence: debateResult.bear.confidence || 0,
-        summary: debateResult.bear.summary || '',
+        summary:    debateResult.bear.summary    || '',
       },
       judge: {
-        decision: debateResult.cio.decision || 'WATCH',
-        confidence: debateResult.cio.confidence || 50,
-        explanation: debateResult.cio.reasoning || debateResult.cio.summary || '',
-        summary: debateResult.cio.summary || '',
+        decision:    debateResult.cio.decision   || 'WATCH',
+        confidence:  debateResult.cio.confidence || 50,
+        explanation: debateResult.cio.reasoning  || debateResult.cio.summary || '',
+        summary:     debateResult.cio.summary    || '',
       },
     };
 
-    // ─── Step 5: Merge and return the final unified response ───────────────
-    // All existing analysisResult fields are preserved unchanged.
-    // The "debate" field is additive — it does not replace or rename anything.
+    // ── Step 6: Merge and return the final unified response ───────────────
+    // Backward compatible: all existing fields (company, decision, score, etc.)
+    // are preserved unchanged. `debate` is an additive field.
     const finalResponse = {
-      ...analysisResult,  // company, decision, score, reasons, risks, overview, financialSummary, sources
-      debate,             // NEW: bull, bear, judge
+      ...analysisResult,
+      debate,
+      // Surface the resolver metadata so the UI/user can see what was analysed
+      resolvedFrom: userQuery !== resolution.companyName ? userQuery : undefined,
     };
 
-    console.log('API: Final response assembled. Returning 200.');
+    console.log(`[API] Response ready. Returning 200.`);
     return NextResponse.json(finalResponse);
 
   } catch (error) {
-    console.error('API Route Error in POST /api/analyze:', error);
+    console.error('[API] Unhandled error in POST /api/analyze:', error);
     return NextResponse.json(
       { error: 'An internal server error occurred while performing research on the company.' },
       { status: 500 }
